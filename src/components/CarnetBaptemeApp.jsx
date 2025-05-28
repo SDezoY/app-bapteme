@@ -7,10 +7,9 @@ const CarnetBaptemeApp = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCarnet, setSelectedCarnet] = useState(null);
   const [showModal, setShowModal] = useState(false);
-  const [modalType, setModalType] = useState('');
-
-  // Structure des données pour un carnet complet
-  const initialCarnetData = {
+  const [modalType, setModalType] = useState('nouveau'); // 'nouveau', 'modifier', 'consulter', 'sacrements', 'enfants', 'mouvements'
+  const [currentCarnet, setCurrentCarnet] = useState(null);
+  const [formData, setFormData] = useState({
     // Informations de baptême
     provinceEcclesiastique: '',
     diocese: '',
@@ -81,9 +80,29 @@ const CarnetBaptemeApp = () => {
       lieu: '',
       nomPasteurImam: ''
     }
+  });
+  
+  // Fonctions pour ouvrir les modales spécifiques
+  const openSacrementsModal = (carnet) => {
+    setCurrentCarnet(carnet);
+    setFormData(carnet);
+    setModalType('sacrements');
+    setShowModal(true);
   };
   
-  const [formData, setFormData] = useState(initialCarnetData);
+  const openEnfantsModal = (carnet) => {
+    setCurrentCarnet(carnet);
+    setFormData(carnet);
+    setModalType('enfants');
+    setShowModal(true);
+  };
+  
+  const openMouvementsModal = (carnet) => {
+    setCurrentCarnet(carnet);
+    setFormData(carnet);
+    setModalType('mouvements');
+    setShowModal(true);
+  };
 
   // Chargement des données depuis le localStorage au démarrage
   useEffect(() => {
@@ -128,11 +147,43 @@ const CarnetBaptemeApp = () => {
   };
 
   const handleSave = () => {
-    const newCarnets = selectedCarnet 
-      ? carnets.map(c => c.id === selectedCarnet.id ? formData : c)
-      : [...carnets, formData];
+    // Pour les modales spécifiques (sacrements, enfants, mouvements), on ne modifie que les propriétés concernées
+    if (modalType === 'sacrements' || modalType === 'enfants' || modalType === 'mouvements') {
+      // Récupérer le carnet actuel (pas forcément selectedCarnet car on peut avoir ouvert via currentCarnet)
+      const carnetId = currentCarnet.id;
+      const carnetIndex = carnets.findIndex(c => c.id === carnetId);
+      
+      if (carnetIndex !== -1) {
+        // Créer une copie du tableau des carnets
+        const newCarnets = [...carnets];
+        
+        // Si on est dans la modale des sacrements, on ne met à jour que les propriétés des sacrements
+        if (modalType === 'sacrements') {
+          newCarnets[carnetIndex].premiereCommunion = formData.premiereCommunion;
+          newCarnets[carnetIndex].confirmation = formData.confirmation;
+          newCarnets[carnetIndex].professionFoi = formData.professionFoi;
+          newCarnets[carnetIndex].sacrementMalades = formData.sacrementMalades;
+        } 
+        // Si on est dans la modale des enfants, on ne met à jour que les enfants
+        else if (modalType === 'enfants') {
+          newCarnets[carnetIndex].enfants = formData.enfants;
+        }
+        // Si on est dans la modale des mouvements, on ne met à jour que les mouvements
+        else if (modalType === 'mouvements') {
+          newCarnets[carnetIndex].mouvements = formData.mouvements;
+        }
+        
+        saveCarnets(newCarnets);
+      }
+    } else {
+      // Pour les autres modales (nouveau, modifier), on procède normalement
+      const newCarnets = selectedCarnet 
+        ? carnets.map(c => c.id === selectedCarnet.id ? formData : c)
+        : [...carnets, {...formData, id: generateId()}];
+      
+      saveCarnets(newCarnets);
+    }
     
-    saveCarnets(newCarnets);
     closeModal();
   };
 
@@ -226,8 +277,87 @@ const CarnetBaptemeApp = () => {
               </div>
             </div>
             <button
-              onClick={() => openModal('nouveau')}
-              className="bg-blue-600 hover:bg-blue-1000 text-white px-6 py-3 rounded-lg flex items-center space-x-2 transition-colors shadow-lg"
+              onClick={() => {
+                setSelectedCarnet(null);
+                setFormData({
+                  ...{
+                    // Informations de baptême
+                    provinceEcclesiastique: '',
+                    diocese: '',
+                    paroisse: '',
+                    village: '',
+                    numeroBapteme: '',
+                    numeroRegistreBapteme: '',
+                    dateBapteme: '',
+                    reverendPere: '',
+                    typeBapteme: 'solennel',
+                    sousPrefecture: '',
+                    numeroRegistreNaissance: '',
+                    numeroActeNaissance: '',
+                    photo: '',
+                    nomPrenoms: '',
+                    dateNaissance: '',
+                    lieuNaissance: '',
+                    nomPere: '',
+                    originePere: '',
+                    nomMere: '',
+                    origineMere: '',
+                    nomParrain: '',
+                    nomMarraine: '',
+                    
+                    // Denier du culte (array d'objets)
+                    denierCulte: [],
+                    
+                    // Sacrements
+                    premiereCommunion: { date: '', lieu: '', paroisse: '', pretre: '' },
+                    confirmation: { date: '', lieu: '', paroisse: '', pretre: '' },
+                    professionFoi: { date: '', lieu: '', paroisse: '', pretre: '' },
+                    sacrementMalades: { date: '', lieu: '', paroisse: '', pretre: '' },
+                    
+                    // Confessions de carême
+                    confessions: [],
+                    
+                    // Mariage
+                    mariage: {
+                      numeroMariage: '',
+                      lieu: '',
+                      paroisse: '',
+                      nomPrenomsEpoux: '',
+                      dateBaptemeEpoux: '',
+                      numeroRegistreBaptemeEpoux: '',
+                      pretrePresent: '',
+                      premierTemoin: '',
+                      deuxiemeTemoin: '',
+                      dateBenedictionNuptiale: '',
+                      lieuBenedictionNuptiale: '',
+                      paroisseBenedictionNuptiale: '',
+                      dispenseNumero: '',
+                      eveche: '',
+                      dateMariageCivil: '',
+                      numeroMariageCivil: '',
+                      lieuMariageCivil: ''
+                    },
+                    
+                    // Enfants
+                    enfants: [],
+                    
+                    // Mouvements et associations
+                    mouvements: [],
+                    
+                    // Origines religieuses (si conversion)
+                    originesReligieuses: {
+                      dateAccueil: '',
+                      egliseOrigine: '',
+                      lieu: '',
+                      nomPasteurImam: ''
+                    },
+                    id: generateId()
+                  }
+                });
+                setModalType('nouveau');
+                setShowModal(true);
+              }}
+              className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg flex items-center space-x-2 transition-colors shadow-lg"
             >
               <Plus className="h-5 w-5" />
               <span>Nouveau Carnet</span>
@@ -371,6 +501,252 @@ const CarnetBaptemeApp = () => {
           </div>
         )}
 
+        {activeTab === 'sacrements' && (
+          <div className="space-y-6">
+            {/* Titre de la section */}
+            <div className="bg-white rounded-lg shadow-md p-6">
+              <h2 className="text-xl font-semibold text-gray-900 flex items-center">
+                <Church className="h-6 w-6 text-indigo-600 mr-2" />
+                Gestion des Sacrements
+              </h2>
+              <p className="text-gray-600 mt-1">Gérez les sacrements pour tous les baptisés</p>
+            </div>
+
+            {/* Liste des carnets avec leurs sacrements */}
+            <div className="bg-white rounded-lg shadow-md overflow-hidden">
+              <div className="px-6 py-4 bg-gray-50 border-b">
+                <h3 className="text-lg font-semibold text-gray-900">
+                  Liste des Baptisés ({carnets.length})
+                </h3>
+              </div>
+              
+              {carnets.length === 0 ? (
+                <div className="p-12 text-center">
+                  <Church className="h-16 w-16 text-gray-300 mx-auto mb-4" />
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">Aucun carnet trouvé</h3>
+                  <p className="text-gray-600">
+                    Commencez par créer votre premier carnet de baptême
+                  </p>
+                </div>
+              ) : (
+                <div className="divide-y divide-gray-200">
+                  {carnets.map((carnet) => (
+                    <div key={carnet.id} className="p-6 hover:bg-gray-50 transition-colors">
+                      <div className="flex items-center justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center space-x-4">
+                            <div className="bg-indigo-100 p-3 rounded-full">
+                              <User className="h-6 w-6 text-indigo-600" />
+                            </div>
+                            <div>
+                              <h3 className="text-lg font-semibold text-gray-900">
+                                {carnet.nomPrenoms || 'Nom non renseigné'}
+                              </h3>
+                              <div className="flex items-center space-x-4 text-sm text-gray-600 mt-1">
+                                <span>N° {carnet.numeroBapteme || 'N/A'}</span>
+                                <span>•</span>
+                                <span>{carnet.paroisse || 'Paroisse non renseignée'}</span>
+                              </div>
+                              <div className="flex flex-wrap items-center gap-2 mt-2">
+                                <span className={`px-2 py-1 text-xs rounded-full ${
+                                  carnet.premiereCommunion?.date 
+                                    ? 'bg-green-100 text-green-800' 
+                                    : 'bg-gray-100 text-gray-800'
+                                }`}>
+                                  1ère Communion: {carnet.premiereCommunion?.date ? '✓' : '✗'}
+                                </span>
+                                <span className={`px-2 py-1 text-xs rounded-full ${
+                                  carnet.confirmation?.date 
+                                    ? 'bg-blue-100 text-blue-800' 
+                                    : 'bg-gray-100 text-gray-800'
+                                }`}>
+                                  Confirmation: {carnet.confirmation?.date ? '✓' : '✗'}
+                                </span>
+                                <span className={`px-2 py-1 text-xs rounded-full ${
+                                  carnet.professionFoi?.date 
+                                    ? 'bg-purple-100 text-purple-800' 
+                                    : 'bg-gray-100 text-gray-800'
+                                }`}>
+                                  Profession de Foi: {carnet.professionFoi?.date ? '✓' : '✗'}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <button
+                            onClick={() => {
+                              setSelectedCarnet(carnet);
+                              setFormData(carnet);
+                              setModalType('sacrements');
+                              setShowModal(true);
+                            }}
+                            className="bg-indigo-100 hover:bg-indigo-200 text-indigo-700 px-4 py-2 rounded-lg transition-colors"
+                          >
+                            Modifier les Sacrements
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'enfants' && (
+          <div className="space-y-6">
+            {/* Titre de la section */}
+            <div className="bg-white rounded-lg shadow-md p-6">
+              <h2 className="text-xl font-semibold text-gray-900 flex items-center">
+                <Baby className="h-6 w-6 text-orange-600 mr-2" />
+                Gestion des Enfants
+              </h2>
+              <p className="text-gray-600 mt-1">Gérez les enfants pour tous les baptisés</p>
+            </div>
+
+            {/* Liste des carnets avec leurs enfants */}
+            <div className="bg-white rounded-lg shadow-md overflow-hidden">
+              <div className="px-6 py-4 bg-gray-50 border-b">
+                <h3 className="text-lg font-semibold text-gray-900">
+                  Liste des Baptisés ({carnets.length})
+                </h3>
+              </div>
+              
+              {carnets.length === 0 ? (
+                <div className="p-12 text-center">
+                  <Church className="h-16 w-16 text-gray-300 mx-auto mb-4" />
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">Aucun carnet trouvé</h3>
+                  <p className="text-gray-600">
+                    Commencez par créer votre premier carnet de baptême
+                  </p>
+                </div>
+              ) : (
+                <div className="divide-y divide-gray-200">
+                  {carnets.map((carnet) => (
+                    <div key={carnet.id} className="p-6 hover:bg-gray-50 transition-colors">
+                      <div className="flex items-center justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center space-x-4">
+                            <div className="bg-orange-100 p-3 rounded-full">
+                              <User className="h-6 w-6 text-orange-600" />
+                            </div>
+                            <div>
+                              <h3 className="text-lg font-semibold text-gray-900">
+                                {carnet.nomPrenoms || 'Nom non renseigné'}
+                              </h3>
+                              <div className="flex items-center space-x-4 text-sm text-gray-600 mt-1">
+                                <span>N° {carnet.numeroBapteme || 'N/A'}</span>
+                                <span>•</span>
+                                <span>{carnet.paroisse || 'Paroisse non renseignée'}</span>
+                              </div>
+                              <div className="flex items-center space-x-4 mt-2">
+                                <span className="px-2 py-1 text-xs rounded-full bg-orange-100 text-orange-800">
+                                  Enfants: {carnet.enfants?.length || 0}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <button
+                            onClick={() => {
+                              setSelectedCarnet(carnet);
+                              setFormData(carnet);
+                              setModalType('enfants');
+                              setShowModal(true);
+                            }}
+                            className="bg-orange-100 hover:bg-orange-200 text-orange-700 px-4 py-2 rounded-lg transition-colors"
+                          >
+                            Gérer les Enfants
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'mouvements' && (
+          <div className="space-y-6">
+            {/* Titre de la section */}
+            <div className="bg-white rounded-lg shadow-md p-6">
+              <h2 className="text-xl font-semibold text-gray-900 flex items-center">
+                <Users className="h-6 w-6 text-teal-600 mr-2" />
+                Gestion des Mouvements et Associations
+              </h2>
+              <p className="text-gray-600 mt-1">Gérez les mouvements et associations pour tous les baptisés</p>
+            </div>
+
+            {/* Liste des carnets avec leurs mouvements */}
+            <div className="bg-white rounded-lg shadow-md overflow-hidden">
+              <div className="px-6 py-4 bg-gray-50 border-b">
+                <h3 className="text-lg font-semibold text-gray-900">
+                  Liste des Baptisés ({carnets.length})
+                </h3>
+              </div>
+              
+              {carnets.length === 0 ? (
+                <div className="p-12 text-center">
+                  <Church className="h-16 w-16 text-gray-300 mx-auto mb-4" />
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">Aucun carnet trouvé</h3>
+                  <p className="text-gray-600">
+                    Commencez par créer votre premier carnet de baptême
+                  </p>
+                </div>
+              ) : (
+                <div className="divide-y divide-gray-200">
+                  {carnets.map((carnet) => (
+                    <div key={carnet.id} className="p-6 hover:bg-gray-50 transition-colors">
+                      <div className="flex items-center justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center space-x-4">
+                            <div className="bg-teal-100 p-3 rounded-full">
+                              <User className="h-6 w-6 text-teal-600" />
+                            </div>
+                            <div>
+                              <h3 className="text-lg font-semibold text-gray-900">
+                                {carnet.nomPrenoms || 'Nom non renseigné'}
+                              </h3>
+                              <div className="flex items-center space-x-4 text-sm text-gray-600 mt-1">
+                                <span>N° {carnet.numeroBapteme || 'N/A'}</span>
+                                <span>•</span>
+                                <span>{carnet.paroisse || 'Paroisse non renseignée'}</span>
+                              </div>
+                              <div className="flex items-center space-x-4 mt-2">
+                                <span className="px-2 py-1 text-xs rounded-full bg-teal-100 text-teal-800">
+                                  Mouvements: {carnet.mouvements?.length || 0}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <button
+                            onClick={() => {
+                              setSelectedCarnet(carnet);
+                              setFormData(carnet);
+                              setModalType('mouvements');
+                              setShowModal(true);
+                            }}
+                            className="bg-teal-100 hover:bg-teal-200 text-teal-700 px-4 py-2 rounded-lg transition-colors"
+                          >
+                            Gérer les Mouvements
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
         {activeTab === 'statistiques' && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             <div className="bg-white p-6 rounded-lg shadow-md">
@@ -420,6 +796,190 @@ const CarnetBaptemeApp = () => {
             </div>
           </div>
         )}
+        
+        {/* Onglet Sacrements */}
+        {activeTab === 'sacrements' && (
+          <div className="space-y-6">
+            <div className="bg-white rounded-lg shadow-md p-6">
+              <h2 className="text-xl font-semibold mb-4 text-indigo-800 flex items-center">
+                <Church className="h-5 w-5 mr-2" />
+                Gestion des Sacrements
+              </h2>
+              <p className="text-gray-600 mb-6">
+                Sélectionnez un baptisé pour gérer ses sacrements (Première Communion, Confirmation, Profession de Foi, Sacrement des Malades)
+              </p>
+              <div className="overflow-hidden bg-white shadow sm:rounded-md mt-4">
+                <ul className="divide-y divide-gray-200">
+                  {handleSearch(carnets).map((carnet) => (
+                    <li key={carnet.id} className="hover:bg-gray-50">
+                      <div className="flex items-center px-4 py-4 sm:px-6">
+                        <div className="flex min-w-0 flex-1 items-center">
+                          <div className="min-w-0 flex-1 px-4 md:grid md:grid-cols-2 md:gap-4">
+                            <div>
+                              <p className="truncate text-base font-medium text-blue-800">{carnet.nomPrenoms}</p>
+                              <p className="mt-1 flex items-center text-sm text-gray-600">
+                                <Calendar className="mr-1.5 h-4 w-4 flex-shrink-0 text-gray-500" />
+                                {carnet.dateBapteme ? new Date(carnet.dateBapteme).toLocaleDateString() : 'Non défini'}
+                              </p>
+                            </div>
+                            <div className="hidden md:block">
+                              <div>
+                                <p className="text-sm text-gray-900 flex items-center">
+                                  <Church className="mr-1.5 h-4 w-4 flex-shrink-0 text-gray-500" />
+                                  {carnet.paroisse || 'Paroisse non définie'}
+                                </p>
+                                <p className="mt-1 text-sm text-gray-600 flex items-center">
+                                  Baptême n° {carnet.numeroBapteme || '-'}
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                        <div>
+                          <button
+                            onClick={() => openSacrementsModal(carnet)}
+                            className="inline-flex items-center rounded-md bg-indigo-600 px-4 py-2 text-base font-bold text-white shadow-md hover:bg-indigo-500 border border-indigo-400 w-full md:w-auto justify-center"
+                            style={{ fontWeight: 'bold', display: 'flex', zIndex: 10 }}
+                          >
+                            <Church className="-ml-0.5 mr-1.5 h-5 w-5" />
+                            Gérer les Sacrements
+                          </button>
+                        </div>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+                {handleSearch(carnets).length === 0 && (
+                  <div className="text-center py-6 text-gray-500">
+                    Aucun carnet de baptême trouvé
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+        
+        {/* Onglet Enfants */}
+        {activeTab === 'enfants' && (
+          <div className="space-y-6">
+            <div className="bg-white rounded-lg shadow-md p-6">
+              <h2 className="text-xl font-semibold mb-4 text-orange-800 flex items-center">
+                <Baby className="h-5 w-5 mr-2" />
+                Gestion des Enfants
+              </h2>
+              <p className="text-gray-600 mb-6">
+                Sélectionnez un baptisé pour gérer ses enfants
+              </p>
+              <div className="overflow-hidden bg-white shadow sm:rounded-md mt-4">
+                <ul className="divide-y divide-gray-200">
+                  {handleSearch(carnets).map((carnet) => (
+                    <li key={carnet.id} className="hover:bg-gray-50">
+                      <div className="flex items-center px-4 py-4 sm:px-6">
+                        <div className="flex min-w-0 flex-1 items-center">
+                          <div className="min-w-0 flex-1 px-4 md:grid md:grid-cols-2 md:gap-4">
+                            <div>
+                              <p className="truncate text-base font-medium text-blue-800">{carnet.nomPrenoms}</p>
+                              <p className="mt-1 flex items-center text-sm text-gray-600">
+                                <Calendar className="mr-1.5 h-4 w-4 flex-shrink-0 text-gray-500" />
+                                {carnet.dateBapteme ? new Date(carnet.dateBapteme).toLocaleDateString() : 'Non défini'}
+                              </p>
+                            </div>
+                            <div className="hidden md:block">
+                              <div>
+                                <p className="text-sm text-gray-900 flex items-center">
+                                  <Church className="mr-1.5 h-4 w-4 flex-shrink-0 text-gray-500" />
+                                  {carnet.paroisse || 'Paroisse non définie'}
+                                </p>
+                                <p className="mt-1 text-sm text-gray-600 flex items-center">
+                                  {carnet.enfants?.length || 0} enfant(s) enregistré(s)
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                        <div>
+                          <button
+                            onClick={() => openEnfantsModal(carnet)}
+                            className="inline-flex items-center rounded-md bg-orange-600 px-4 py-3 text-sm font-semibold text-white shadow-lg hover:bg-orange-500 border-2 border-orange-400"
+                          >
+                            <Baby className="-ml-0.5 mr-1.5 h-5 w-5" />
+                            Gérer les Enfants
+                          </button>
+                        </div>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+                {handleSearch(carnets).length === 0 && (
+                  <div className="text-center py-6 text-gray-500">
+                    Aucun carnet de baptême trouvé
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+        
+        {/* Onglet Mouvements */}
+        {activeTab === 'mouvements' && (
+          <div className="space-y-6">
+            <div className="bg-white rounded-lg shadow-md p-6">
+              <h2 className="text-xl font-semibold mb-4 text-teal-800 flex items-center">
+                <Users className="h-5 w-5 mr-2" />
+                Gestion des Mouvements et Associations
+              </h2>
+              <p className="text-gray-600 mb-6">
+                Sélectionnez un baptisé pour gérer ses mouvements et associations
+              </p>
+              <div className="overflow-hidden bg-white shadow sm:rounded-md mt-4">
+                <ul className="divide-y divide-gray-200">
+                  {handleSearch(carnets).map((carnet) => (
+                    <li key={carnet.id} className="hover:bg-gray-50">
+                      <div className="flex items-center px-4 py-4 sm:px-6">
+                        <div className="flex min-w-0 flex-1 items-center">
+                          <div className="min-w-0 flex-1 px-4 md:grid md:grid-cols-2 md:gap-4">
+                            <div>
+                              <p className="truncate text-base font-medium text-blue-800">{carnet.nomPrenoms}</p>
+                              <p className="mt-1 flex items-center text-sm text-gray-600">
+                                <Calendar className="mr-1.5 h-4 w-4 flex-shrink-0 text-gray-500" />
+                                {carnet.dateBapteme ? new Date(carnet.dateBapteme).toLocaleDateString() : 'Non défini'}
+                              </p>
+                            </div>
+                            <div className="hidden md:block">
+                              <div>
+                                <p className="text-sm text-gray-900 flex items-center">
+                                  <Church className="mr-1.5 h-4 w-4 flex-shrink-0 text-gray-500" />
+                                  {carnet.paroisse || 'Paroisse non définie'}
+                                </p>
+                                <p className="mt-1 text-sm text-gray-600 flex items-center">
+                                  {carnet.mouvements?.length || 0} mouvement(s) enregistré(s)
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                        <div>
+                          <button
+                            onClick={() => openMouvementsModal(carnet)}
+                            className="inline-flex items-center rounded-md bg-teal-600 px-4 py-3 text-sm font-semibold text-white shadow-lg hover:bg-teal-500 border-2 border-teal-400"
+                          >
+                            <Users className="-ml-0.5 mr-1.5 h-5 w-5" />
+                            Gérer les Mouvements
+                          </button>
+                        </div>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+                {handleSearch(carnets).length === 0 && (
+                  <div className="text-center py-6 text-gray-500">
+                    Aucun carnet de baptême trouvé
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Modal */}
@@ -430,19 +990,24 @@ const CarnetBaptemeApp = () => {
               <h2 className="text-2xl font-bold text-gray-900">
                 {modalType === 'nouveau' ? 'Nouveau Carnet de Baptême' : 
                  modalType === 'modifier' ? 'Modifier le Carnet' : 
-                 'Consulter le Carnet'}
+                 modalType === 'consulter' ? 'Consulter le Carnet' :
+                 modalType === 'sacrements' ? 'Gestion des Sacrements' :
+                 modalType === 'enfants' ? 'Gestion des Enfants' :
+                 modalType === 'mouvements' ? 'Gestion des Mouvements et Associations' :
+                 'Détails du Carnet'}
               </h2>
               <button
                 onClick={closeModal}
                 className="text-gray-400 hover:text-gray-600 p-2"
               >
-                X
+                ×
               </button>
             </div>
             
             <div className="overflow-y-auto max-h-[70vh] p-6">
-              {/* Formulaire de saisie complet */}
-              <div className="space-y-8">
+              {/* Formulaires conditionnels en fonction du type de modal */}
+              {(modalType === 'nouveau' || modalType === 'modifier' || modalType === 'consulter') && (
+                <div className="space-y-8">
                 {/* Section Baptême */}
                 <div className="bg-blue-50 p-6 rounded-lg">
                   <h3 className="text-lg font-semibold text-blue-900 mb-4 flex items-center">
@@ -669,27 +1234,903 @@ const CarnetBaptemeApp = () => {
                   ))}
                 </div>
 
-                {/* Autres sections */}
-                {/* ... (les autres sections du formulaire) ... */}
+                {/* Section Sacrements */}
+                <div className="bg-indigo-50 p-6 rounded-lg">
+                  <h3 className="text-lg font-semibold text-indigo-900 mb-4 flex items-center">
+                    <Church className="h-5 w-5 mr-2" />
+                    Sacrements
+                  </h3>
+                  
+                  {/* Première Communion */}
+                  <div className="mb-6">
+                    <h4 className="font-medium text-indigo-800 mb-2">Première Communion</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <input
+                        type="date"
+                        placeholder="Date"
+                        value={formData.premiereCommunion.date}
+                        onChange={(e) => setFormData({
+                          ...formData, 
+                          premiereCommunion: {...formData.premiereCommunion, date: e.target.value}
+                        })}
+                        className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                        disabled={modalType === 'consulter'}
+                      />
+                      <input
+                        type="text"
+                        placeholder="Lieu"
+                        value={formData.premiereCommunion.lieu}
+                        onChange={(e) => setFormData({
+                          ...formData, 
+                          premiereCommunion: {...formData.premiereCommunion, lieu: e.target.value}
+                        })}
+                        className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                        disabled={modalType === 'consulter'}
+                      />
+                      <input
+                        type="text"
+                        placeholder="Paroisse"
+                        value={formData.premiereCommunion.paroisse}
+                        onChange={(e) => setFormData({
+                          ...formData, 
+                          premiereCommunion: {...formData.premiereCommunion, paroisse: e.target.value}
+                        })}
+                        className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                        disabled={modalType === 'consulter'}
+                      />
+                      <input
+                        type="text"
+                        placeholder="Prêtre"
+                        value={formData.premiereCommunion.pretre}
+                        onChange={(e) => setFormData({
+                          ...formData, 
+                          premiereCommunion: {...formData.premiereCommunion, pretre: e.target.value}
+                        })}
+                        className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                        disabled={modalType === 'consulter'}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Confirmation */}
+                  <div className="mb-6">
+                    <h4 className="font-medium text-indigo-800 mb-2">Confirmation</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <input
+                        type="date"
+                        placeholder="Date"
+                        value={formData.confirmation.date}
+                        onChange={(e) => setFormData({
+                          ...formData, 
+                          confirmation: {...formData.confirmation, date: e.target.value}
+                        })}
+                        className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                        disabled={modalType === 'consulter'}
+                      />
+                      <input
+                        type="text"
+                        placeholder="Lieu"
+                        value={formData.confirmation.lieu}
+                        onChange={(e) => setFormData({
+                          ...formData, 
+                          confirmation: {...formData.confirmation, lieu: e.target.value}
+                        })}
+                        className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                        disabled={modalType === 'consulter'}
+                      />
+                      <input
+                        type="text"
+                        placeholder="Paroisse"
+                        value={formData.confirmation.paroisse}
+                        onChange={(e) => setFormData({
+                          ...formData, 
+                          confirmation: {...formData.confirmation, paroisse: e.target.value}
+                        })}
+                        className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                        disabled={modalType === 'consulter'}
+                      />
+                      <input
+                        type="text"
+                        placeholder="Prêtre"
+                        value={formData.confirmation.pretre}
+                        onChange={(e) => setFormData({
+                          ...formData, 
+                          confirmation: {...formData.confirmation, pretre: e.target.value}
+                        })}
+                        className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                        disabled={modalType === 'consulter'}
+                      />
+                    </div>
+                  </div>
+                  
+                  {/* Profession de Foi */}
+                  <div className="mb-6">
+                    <h4 className="font-medium text-indigo-800 mb-2">Profession de Foi</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <input
+                        type="date"
+                        placeholder="Date"
+                        value={formData.professionFoi.date}
+                        onChange={(e) => setFormData({
+                          ...formData, 
+                          professionFoi: {...formData.professionFoi, date: e.target.value}
+                        })}
+                        className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                        disabled={modalType === 'consulter'}
+                      />
+                      <input
+                        type="text"
+                        placeholder="Lieu"
+                        value={formData.professionFoi.lieu}
+                        onChange={(e) => setFormData({
+                          ...formData, 
+                          professionFoi: {...formData.professionFoi, lieu: e.target.value}
+                        })}
+                        className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                        disabled={modalType === 'consulter'}
+                      />
+                      <input
+                        type="text"
+                        placeholder="Paroisse"
+                        value={formData.professionFoi.paroisse}
+                        onChange={(e) => setFormData({
+                          ...formData, 
+                          professionFoi: {...formData.professionFoi, paroisse: e.target.value}
+                        })}
+                        className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                        disabled={modalType === 'consulter'}
+                      />
+                      <input
+                        type="text"
+                        placeholder="Prêtre"
+                        value={formData.professionFoi.pretre}
+                        onChange={(e) => setFormData({
+                          ...formData, 
+                          professionFoi: {...formData.professionFoi, pretre: e.target.value}
+                        })}
+                        className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                        disabled={modalType === 'consulter'}
+                      />
+                    </div>
+                  </div>
+                  
+                  {/* Sacrement des Malades */}
+                  <div className="mb-6">
+                    <h4 className="font-medium text-indigo-800 mb-2">Sacrement des Malades</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <input
+                        type="date"
+                        placeholder="Date"
+                        value={formData.sacrementMalades.date}
+                        onChange={(e) => setFormData({
+                          ...formData, 
+                          sacrementMalades: {...formData.sacrementMalades, date: e.target.value}
+                        })}
+                        className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                        disabled={modalType === 'consulter'}
+                      />
+                      <input
+                        type="text"
+                        placeholder="Lieu"
+                        value={formData.sacrementMalades.lieu}
+                        onChange={(e) => setFormData({
+                          ...formData, 
+                          sacrementMalades: {...formData.sacrementMalades, lieu: e.target.value}
+                        })}
+                        className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                        disabled={modalType === 'consulter'}
+                      />
+                      <input
+                        type="text"
+                        placeholder="Paroisse"
+                        value={formData.sacrementMalades.paroisse}
+                        onChange={(e) => setFormData({
+                          ...formData, 
+                          sacrementMalades: {...formData.sacrementMalades, paroisse: e.target.value}
+                        })}
+                        className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                        disabled={modalType === 'consulter'}
+                      />
+                      <input
+                        type="text"
+                        placeholder="Prêtre"
+                        value={formData.sacrementMalades.pretre}
+                        onChange={(e) => setFormData({
+                          ...formData, 
+                          sacrementMalades: {...formData.sacrementMalades, pretre: e.target.value}
+                        })}
+                        className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                        disabled={modalType === 'consulter'}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Section Enfants */}
+                <div className="bg-orange-50 p-6 rounded-lg">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-lg font-semibold text-orange-900 flex items-center">
+                      <Baby className="h-5 w-5 mr-2" />
+                      Enfants
+                    </h3>
+                    {modalType !== 'consulter' && (
+                      <button
+                        onClick={ajouterEnfant}
+                        className="bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 rounded-lg text-sm"
+                      >
+                        Ajouter Enfant
+                      </button>
+                    )}
+                  </div>
+                  {formData.enfants?.map((enfant, index) => (
+                    <div key={enfant.id} className="bg-white p-4 rounded-lg mb-3 border">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <input
+                          type="text"
+                          placeholder="Nom et Prénoms"
+                          value={enfant.nomPrenoms}
+                          onChange={(e) => {
+                            const newEnfants = [...formData.enfants];
+                            newEnfants[index].nomPrenoms = e.target.value;
+                            setFormData({...formData, enfants: newEnfants});
+                          }}
+                          className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500"
+                          disabled={modalType === 'consulter'}
+                        />
+                        <input
+                          type="date"
+                          placeholder="Date de Naissance"
+                          value={enfant.dateNaissance}
+                          onChange={(e) => {
+                            const newEnfants = [...formData.enfants];
+                            newEnfants[index].dateNaissance = e.target.value;
+                            setFormData({...formData, enfants: newEnfants});
+                          }}
+                          className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500"
+                          disabled={modalType === 'consulter'}
+                        />
+                        <input
+                          type="text"
+                          placeholder="Lieu de Naissance"
+                          value={enfant.lieuNaissance}
+                          onChange={(e) => {
+                            const newEnfants = [...formData.enfants];
+                            newEnfants[index].lieuNaissance = e.target.value;
+                            setFormData({...formData, enfants: newEnfants});
+                          }}
+                          className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500"
+                          disabled={modalType === 'consulter'}
+                        />
+                        <input
+                          type="date"
+                          placeholder="Date de Baptême"
+                          value={enfant.dateBapteme}
+                          onChange={(e) => {
+                            const newEnfants = [...formData.enfants];
+                            newEnfants[index].dateBapteme = e.target.value;
+                            setFormData({...formData, enfants: newEnfants});
+                          }}
+                          className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500"
+                          disabled={modalType === 'consulter'}
+                        />
+                        <input
+                          type="text"
+                          placeholder="Lieu de Baptême"
+                          value={enfant.lieuBapteme}
+                          onChange={(e) => {
+                            const newEnfants = [...formData.enfants];
+                            newEnfants[index].lieuBapteme = e.target.value;
+                            setFormData({...formData, enfants: newEnfants});
+                          }}
+                          className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500"
+                          disabled={modalType === 'consulter'}
+                        />
+                        <input
+                          type="text"
+                          placeholder="Paroisse de Baptême"
+                          value={enfant.paroisseBapteme}
+                          onChange={(e) => {
+                            const newEnfants = [...formData.enfants];
+                            newEnfants[index].paroisseBapteme = e.target.value;
+                            setFormData({...formData, enfants: newEnfants});
+                          }}
+                          className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500"
+                          disabled={modalType === 'consulter'}
+                        />
+                        <input
+                          type="text"
+                          placeholder="N° Registre Baptême"
+                          value={enfant.numeroRegistreBapteme}
+                          onChange={(e) => {
+                            const newEnfants = [...formData.enfants];
+                            newEnfants[index].numeroRegistreBapteme = e.target.value;
+                            setFormData({...formData, enfants: newEnfants});
+                          }}
+                          className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500"
+                          disabled={modalType === 'consulter'}
+                        />
+                        <input
+                          type="date"
+                          placeholder="Date de Confirmation"
+                          value={enfant.dateConfirmation}
+                          onChange={(e) => {
+                            const newEnfants = [...formData.enfants];
+                            newEnfants[index].dateConfirmation = e.target.value;
+                            setFormData({...formData, enfants: newEnfants});
+                          }}
+                          className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500"
+                          disabled={modalType === 'consulter'}
+                        />
+                        <input
+                          type="text"
+                          placeholder="Lieu de Confirmation"
+                          value={enfant.lieuConfirmation}
+                          onChange={(e) => {
+                            const newEnfants = [...formData.enfants];
+                            newEnfants[index].lieuConfirmation = e.target.value;
+                            setFormData({...formData, enfants: newEnfants});
+                          }}
+                          className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500"
+                          disabled={modalType === 'consulter'}
+                        />
+                      </div>
+                      {modalType !== 'consulter' && (
+                        <div className="mt-2 text-right">
+                          <button
+                            onClick={() => {
+                              const newEnfants = formData.enfants.filter((_, i) => i !== index);
+                              setFormData({...formData, enfants: newEnfants});
+                            }}
+                            className="bg-red-100 hover:bg-red-200 text-red-700 px-3 py-1 rounded-lg text-sm"
+                          >
+                            Supprimer
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                  {formData.enfants?.length === 0 && (
+                    <div className="text-center py-4 text-gray-500">
+                      Aucun enfant enregistré
+                    </div>
+                  )}
+                </div>
+
+                {/* Section Mouvements */}
+                <div className="bg-teal-50 p-6 rounded-lg">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-lg font-semibold text-teal-900 flex items-center">
+                      <Users className="h-5 w-5 mr-2" />
+                      Mouvements et Associations
+                    </h3>
+                    {modalType !== 'consulter' && (
+                      <button
+                        onClick={ajouterMouvement}
+                        className="bg-teal-600 hover:bg-teal-700 text-white px-4 py-2 rounded-lg text-sm"
+                      >
+                        Ajouter Mouvement
+                      </button>
+                    )}
+                  </div>
+                  {formData.mouvements?.map((mouvement, index) => (
+                    <div key={mouvement.id} className="bg-white p-4 rounded-lg mb-3 border">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <input
+                          type="text"
+                          placeholder="Désignation du mouvement"
+                          value={mouvement.designation}
+                          onChange={(e) => {
+                            const newMouvements = [...formData.mouvements];
+                            newMouvements[index].designation = e.target.value;
+                            setFormData({...formData, mouvements: newMouvements});
+                          }}
+                          className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500"
+                          disabled={modalType === 'consulter'}
+                        />
+                        <input
+                          type="date"
+                          placeholder="Date d'inscription"
+                          value={mouvement.dateInscription}
+                          onChange={(e) => {
+                            const newMouvements = [...formData.mouvements];
+                            newMouvements[index].dateInscription = e.target.value;
+                            setFormData({...formData, mouvements: newMouvements});
+                          }}
+                          className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500"
+                          disabled={modalType === 'consulter'}
+                        />
+                        <input
+                          type="text"
+                          placeholder="Paroisse"
+                          value={mouvement.paroisse}
+                          onChange={(e) => {
+                            const newMouvements = [...formData.mouvements];
+                            newMouvements[index].paroisse = e.target.value;
+                            setFormData({...formData, mouvements: newMouvements});
+                          }}
+                          className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500"
+                          disabled={modalType === 'consulter'}
+                        />
+                        <input
+                          type="text"
+                          placeholder="Lieu"
+                          value={mouvement.lieu}
+                          onChange={(e) => {
+                            const newMouvements = [...formData.mouvements];
+                            newMouvements[index].lieu = e.target.value;
+                            setFormData({...formData, mouvements: newMouvements});
+                          }}
+                          className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500"
+                          disabled={modalType === 'consulter'}
+                        />
+                        <input
+                          type="text"
+                          placeholder="Titre/Responsabilité"
+                          value={mouvement.titreResponsabilite}
+                          onChange={(e) => {
+                            const newMouvements = [...formData.mouvements];
+                            newMouvements[index].titreResponsabilite = e.target.value;
+                            setFormData({...formData, mouvements: newMouvements});
+                          }}
+                          className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500"
+                          disabled={modalType === 'consulter'}
+                        />
+                      </div>
+                      {modalType !== 'consulter' && (
+                        <div className="mt-2 text-right">
+                          <button
+                            onClick={() => {
+                              const newMouvements = formData.mouvements.filter((_, i) => i !== index);
+                              setFormData({...formData, mouvements: newMouvements});
+                            }}
+                            className="bg-red-100 hover:bg-red-200 text-red-700 px-3 py-1 rounded-lg text-sm"
+                          >
+                            Supprimer
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                  {formData.mouvements?.length === 0 && (
+                    <div className="text-center py-4 text-gray-500">
+                      Aucun mouvement ou association enregistré
+                    </div>
+                  )}
+                </div>
               </div>
+              )}
+              
+              {/* Formulaire de gestion des Sacrements */}
+              {modalType === 'sacrements' && (
+                <div className="space-y-8">
+                  <div className="bg-indigo-50 p-6 rounded-lg">
+                    <h3 className="text-lg font-semibold text-indigo-900 mb-4 flex items-center">
+                      <Church className="h-5 w-5 mr-2" />
+                      Sacrements pour {formData.nomPrenoms || 'le baptisé'}
+                    </h3>
+                    
+                    {/* Première Communion */}
+                    <div className="mb-6">
+                      <h4 className="font-medium text-indigo-800 mb-2">Première Communion</h4>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <input
+                          type="date"
+                          placeholder="Date"
+                          value={formData.premiereCommunion.date}
+                          onChange={(e) => setFormData({
+                            ...formData, 
+                            premiereCommunion: {...formData.premiereCommunion, date: e.target.value}
+                          })}
+                          className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                        />
+                        <input
+                          type="text"
+                          placeholder="Lieu"
+                          value={formData.premiereCommunion.lieu}
+                          onChange={(e) => setFormData({
+                            ...formData, 
+                            premiereCommunion: {...formData.premiereCommunion, lieu: e.target.value}
+                          })}
+                          className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                        />
+                        <input
+                          type="text"
+                          placeholder="Paroisse"
+                          value={formData.premiereCommunion.paroisse}
+                          onChange={(e) => setFormData({
+                            ...formData, 
+                            premiereCommunion: {...formData.premiereCommunion, paroisse: e.target.value}
+                          })}
+                          className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                        />
+                        <input
+                          type="text"
+                          placeholder="Prêtre"
+                          value={formData.premiereCommunion.pretre}
+                          onChange={(e) => setFormData({
+                            ...formData, 
+                            premiereCommunion: {...formData.premiereCommunion, pretre: e.target.value}
+                          })}
+                          className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Confirmation */}
+                    <div className="mb-6">
+                      <h4 className="font-medium text-indigo-800 mb-2">Confirmation</h4>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <input
+                          type="date"
+                          placeholder="Date"
+                          value={formData.confirmation.date}
+                          onChange={(e) => setFormData({
+                            ...formData, 
+                            confirmation: {...formData.confirmation, date: e.target.value}
+                          })}
+                          className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                        />
+                        <input
+                          type="text"
+                          placeholder="Lieu"
+                          value={formData.confirmation.lieu}
+                          onChange={(e) => setFormData({
+                            ...formData, 
+                            confirmation: {...formData.confirmation, lieu: e.target.value}
+                          })}
+                          className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                        />
+                        <input
+                          type="text"
+                          placeholder="Paroisse"
+                          value={formData.confirmation.paroisse}
+                          onChange={(e) => setFormData({
+                            ...formData, 
+                            confirmation: {...formData.confirmation, paroisse: e.target.value}
+                          })}
+                          className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                        />
+                        <input
+                          type="text"
+                          placeholder="Prêtre"
+                          value={formData.confirmation.pretre}
+                          onChange={(e) => setFormData({
+                            ...formData, 
+                            confirmation: {...formData.confirmation, pretre: e.target.value}
+                          })}
+                          className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                        />
+                      </div>
+                    </div>
+                    
+                    {/* Profession de Foi */}
+                    <div className="mb-6">
+                      <h4 className="font-medium text-indigo-800 mb-2">Profession de Foi</h4>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <input
+                          type="date"
+                          placeholder="Date"
+                          value={formData.professionFoi.date}
+                          onChange={(e) => setFormData({
+                            ...formData, 
+                            professionFoi: {...formData.professionFoi, date: e.target.value}
+                          })}
+                          className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                        />
+                        <input
+                          type="text"
+                          placeholder="Lieu"
+                          value={formData.professionFoi.lieu}
+                          onChange={(e) => setFormData({
+                            ...formData, 
+                            professionFoi: {...formData.professionFoi, lieu: e.target.value}
+                          })}
+                          className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                        />
+                        <input
+                          type="text"
+                          placeholder="Paroisse"
+                          value={formData.professionFoi.paroisse}
+                          onChange={(e) => setFormData({
+                            ...formData, 
+                            professionFoi: {...formData.professionFoi, paroisse: e.target.value}
+                          })}
+                          className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                        />
+                        <input
+                          type="text"
+                          placeholder="Prêtre"
+                          value={formData.professionFoi.pretre}
+                          onChange={(e) => setFormData({
+                            ...formData, 
+                            professionFoi: {...formData.professionFoi, pretre: e.target.value}
+                          })}
+                          className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                        />
+                      </div>
+                    </div>
+                    
+                    {/* Sacrement des Malades */}
+                    <div className="mb-6">
+                      <h4 className="font-medium text-indigo-800 mb-2">Sacrement des Malades</h4>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <input
+                          type="date"
+                          placeholder="Date"
+                          value={formData.sacrementMalades.date}
+                          onChange={(e) => setFormData({
+                            ...formData, 
+                            sacrementMalades: {...formData.sacrementMalades, date: e.target.value}
+                          })}
+                          className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                        />
+                        <input
+                          type="text"
+                          placeholder="Lieu"
+                          value={formData.sacrementMalades.lieu}
+                          onChange={(e) => setFormData({
+                            ...formData, 
+                            sacrementMalades: {...formData.sacrementMalades, lieu: e.target.value}
+                          })}
+                          className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                        />
+                        <input
+                          type="text"
+                          placeholder="Paroisse"
+                          value={formData.sacrementMalades.paroisse}
+                          onChange={(e) => setFormData({
+                            ...formData, 
+                            sacrementMalades: {...formData.sacrementMalades, paroisse: e.target.value}
+                          })}
+                          className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                        />
+                        <input
+                          type="text"
+                          placeholder="Prêtre"
+                          value={formData.sacrementMalades.pretre}
+                          onChange={(e) => setFormData({
+                            ...formData, 
+                            sacrementMalades: {...formData.sacrementMalades, pretre: e.target.value}
+                          })}
+                          className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+              
+              {/* Formulaire de gestion des Enfants */}
+              {modalType === 'enfants' && (
+                <div className="space-y-6">
+                  <div className="bg-orange-50 p-6 rounded-lg">
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className="text-lg font-semibold text-orange-900 flex items-center">
+                        <Baby className="h-5 w-5 mr-2" />
+                        Enfants de {formData.nomPrenoms || 'le baptisé'}
+                      </h3>
+                      <button
+                        onClick={ajouterEnfant}
+                        className="bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 rounded-lg text-sm"
+                      >
+                        Ajouter Enfant
+                      </button>
+                    </div>
+                    {formData.enfants?.map((enfant, index) => (
+                      <div key={enfant.id} className="bg-white p-4 rounded-lg mb-3 border">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                          <input
+                            type="text"
+                            placeholder="Nom et Prénoms"
+                            value={enfant.nomPrenoms}
+                            onChange={(e) => {
+                              const newEnfants = [...formData.enfants];
+                              newEnfants[index].nomPrenoms = e.target.value;
+                              setFormData({...formData, enfants: newEnfants});
+                            }}
+                            className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500"
+                          />
+                          <input
+                            type="date"
+                            placeholder="Date de Naissance"
+                            value={enfant.dateNaissance}
+                            onChange={(e) => {
+                              const newEnfants = [...formData.enfants];
+                              newEnfants[index].dateNaissance = e.target.value;
+                              setFormData({...formData, enfants: newEnfants});
+                            }}
+                            className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500"
+                          />
+                          <input
+                            type="text"
+                            placeholder="Lieu de Naissance"
+                            value={enfant.lieuNaissance}
+                            onChange={(e) => {
+                              const newEnfants = [...formData.enfants];
+                              newEnfants[index].lieuNaissance = e.target.value;
+                              setFormData({...formData, enfants: newEnfants});
+                            }}
+                            className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500"
+                          />
+                          <input
+                            type="date"
+                            placeholder="Date de Baptême"
+                            value={enfant.dateBapteme}
+                            onChange={(e) => {
+                              const newEnfants = [...formData.enfants];
+                              newEnfants[index].dateBapteme = e.target.value;
+                              setFormData({...formData, enfants: newEnfants});
+                            }}
+                            className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500"
+                          />
+                          <input
+                            type="text"
+                            placeholder="Lieu de Baptême"
+                            value={enfant.lieuBapteme}
+                            onChange={(e) => {
+                              const newEnfants = [...formData.enfants];
+                              newEnfants[index].lieuBapteme = e.target.value;
+                              setFormData({...formData, enfants: newEnfants});
+                            }}
+                            className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500"
+                          />
+                          <input
+                            type="text"
+                            placeholder="Paroisse de Baptême"
+                            value={enfant.paroisseBapteme}
+                            onChange={(e) => {
+                              const newEnfants = [...formData.enfants];
+                              newEnfants[index].paroisseBapteme = e.target.value;
+                              setFormData({...formData, enfants: newEnfants});
+                            }}
+                            className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500"
+                          />
+                        </div>
+                        <div className="mt-2 text-right">
+                          <button
+                            onClick={() => {
+                              const newEnfants = formData.enfants.filter((_, i) => i !== index);
+                              setFormData({...formData, enfants: newEnfants});
+                            }}
+                            className="bg-red-100 hover:bg-red-200 text-red-700 px-3 py-1 rounded-lg text-sm"
+                          >
+                            Supprimer
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                    {formData.enfants?.length === 0 && (
+                      <div className="text-center py-4 text-gray-500">
+                        Aucun enfant enregistré
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+              
+              {/* Formulaire de gestion des Mouvements */}
+              {modalType === 'mouvements' && (
+                <div className="space-y-6">
+                  <div className="bg-teal-50 p-6 rounded-lg">
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className="text-lg font-semibold text-teal-900 flex items-center">
+                        <Users className="h-5 w-5 mr-2" />
+                        Mouvements et Associations de {formData.nomPrenoms || 'le baptisé'}
+                      </h3>
+                      <button
+                        onClick={ajouterMouvement}
+                        className="bg-teal-600 hover:bg-teal-700 text-white px-4 py-2 rounded-lg text-sm"
+                      >
+                        Ajouter Mouvement
+                      </button>
+                    </div>
+                    {formData.mouvements?.map((mouvement, index) => (
+                      <div key={mouvement.id} className="bg-white p-4 rounded-lg mb-3 border">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                          <input
+                            type="text"
+                            placeholder="Désignation du mouvement"
+                            value={mouvement.designation}
+                            onChange={(e) => {
+                              const newMouvements = [...formData.mouvements];
+                              newMouvements[index].designation = e.target.value;
+                              setFormData({...formData, mouvements: newMouvements});
+                            }}
+                            className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500"
+                          />
+                          <input
+                            type="date"
+                            placeholder="Date d'inscription"
+                            value={mouvement.dateInscription}
+                            onChange={(e) => {
+                              const newMouvements = [...formData.mouvements];
+                              newMouvements[index].dateInscription = e.target.value;
+                              setFormData({...formData, mouvements: newMouvements});
+                            }}
+                            className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500"
+                          />
+                          <input
+                            type="text"
+                            placeholder="Paroisse"
+                            value={mouvement.paroisse}
+                            onChange={(e) => {
+                              const newMouvements = [...formData.mouvements];
+                              newMouvements[index].paroisse = e.target.value;
+                              setFormData({...formData, mouvements: newMouvements});
+                            }}
+                            className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500"
+                          />
+                          <input
+                            type="text"
+                            placeholder="Lieu"
+                            value={mouvement.lieu}
+                            onChange={(e) => {
+                              const newMouvements = [...formData.mouvements];
+                              newMouvements[index].lieu = e.target.value;
+                              setFormData({...formData, mouvements: newMouvements});
+                            }}
+                            className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500"
+                          />
+                          <input
+                            type="text"
+                            placeholder="Titre/Responsabilité"
+                            value={mouvement.titreResponsabilite}
+                            onChange={(e) => {
+                              const newMouvements = [...formData.mouvements];
+                              newMouvements[index].titreResponsabilite = e.target.value;
+                              setFormData({...formData, mouvements: newMouvements});
+                            }}
+                            className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500"
+                          />
+                        </div>
+                        <div className="mt-2 text-right">
+                          <button
+                            onClick={() => {
+                              const newMouvements = formData.mouvements.filter((_, i) => i !== index);
+                              setFormData({...formData, mouvements: newMouvements});
+                            }}
+                            className="bg-red-100 hover:bg-red-200 text-red-700 px-3 py-1 rounded-lg text-sm"
+                          >
+                            Supprimer
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                    {formData.mouvements?.length === 0 && (
+                      <div className="text-center py-4 text-gray-500">
+                        Aucun mouvement ou association enregistré
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
             
-            {modalType !== 'consulter' && (
-              <div className="flex justify-end space-x-4 p-6 border-t bg-gray-50">
-                <button
-                  onClick={closeModal}
-                  className="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
-                >
-                  Annuler
-                </button>
-                <button
-                  onClick={handleSave}
-                  className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
-                >
-                  {modalType === 'nouveau' ? 'Créer le Carnet' : 'Sauvegarder'}
-                </button>
-              </div>
-            )}
+            <div className="flex justify-end space-x-4 p-6 border-t bg-gray-50">
+              <button
+                onClick={closeModal}
+                className="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
+              >
+                Annuler
+              </button>
+              
+              {/* Bouton de sauvegarde adapté au type de modale */}
+              <button
+                onClick={handleSave}
+                className={`px-6 py-2 text-white rounded-lg transition-colors ${
+                  modalType === 'sacrements' ? 'bg-indigo-600 hover:bg-indigo-700' :
+                  modalType === 'enfants' ? 'bg-orange-600 hover:bg-orange-700' :
+                  modalType === 'mouvements' ? 'bg-teal-600 hover:bg-teal-700' :
+                  'bg-blue-600 hover:bg-blue-700'
+                }`}
+              >
+                {modalType === 'nouveau' ? 'Créer le Carnet' : 
+                 modalType === 'sacrements' ? 'Sauvegarder les Sacrements' :
+                 modalType === 'enfants' ? 'Sauvegarder les Enfants' :
+                 modalType === 'mouvements' ? 'Sauvegarder les Mouvements' :
+                 'Sauvegarder les Modifications'}
+              </button>
+            </div>
           </div>
         </div>
       )}
